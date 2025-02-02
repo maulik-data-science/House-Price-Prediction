@@ -1,0 +1,53 @@
+import pandas as pd
+import lightgbm
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score
+
+# Load the data
+df_train = pd.read_csv(r"C:\data science Internship\pythonProject1\Real Estate Price Prediction\output\cleaned_data_without_outliers.csv")
+
+# Specify the feature columns to use for prediction
+feature_columns = ['Bedrooms1', 'Baths', 'Balcony', 'total_sqft', 'Price_per_SQFT']
+
+# Convert 'Yes'/'No' in 'Balcony' column to 1/0
+df_train['Balcony'] = df_train['Balcony'].map({'Yes': 1, 'No': 0})
+
+# Drop rows with missing values in the selected feature columns
+df_train.dropna(subset=feature_columns, inplace=True)
+
+# Extract features and target variable
+X = df_train[feature_columns]
+y = df_train['Price']
+
+# Split the data into training and validation sets
+X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Define LightGBM parameters
+parameters = {
+    'boosting_type': 'gbdt',
+    'objective': 'regression',
+    'metric': 'l2',
+    'num_leaves': 31,
+    'learning_rate': 0.05,
+    'feature_fraction': 0.9,
+    'bagging_fraction': 0.8,
+    'bagging_freq': 5,
+    'verbose': 0,
+    'early_stopping_rounds': 50
+}
+
+# Create LightGBM datasets
+train_data = lightgbm.Dataset(X_train, label=y_train)
+valid_data = lightgbm.Dataset(X_valid, label=y_valid)
+
+# Train the LightGBM model
+model_lgbm = lightgbm.train(params=parameters,
+                            train_set=train_data,
+                            valid_sets=[train_data, valid_data],
+                            num_boost_round=5000)
+
+# Predictions on training and validation data
+y_train_pred = model_lgbm.predict(X_train)
+y_valid_pred = model_lgbm.predict(X_valid)
+
+
